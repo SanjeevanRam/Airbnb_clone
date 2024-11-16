@@ -113,11 +113,11 @@ app.use("/listings",listingRouter);
 app.use("/listings/:id/reviews", reviewRouter);
 app.use("/",userRouter);
 
-app.get("/*",(req,res)=>{
-    res.flash("error","Page is not Found!");
-    res.render("index");
+// app.get("/listings",(req,res)=>{
+//     res.flash("error","Page is not Found!");
+//     res.render("index");
 
-})
+// })
 
 app.use((err,req,res,next)=>{
     let{ statusCode=500 , message="Something went wrong!" } = err;
