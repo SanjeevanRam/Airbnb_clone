@@ -67,10 +67,6 @@ const sessionOptions = {
     }
 };
 
-app.get('/', (req, res) => {
-    res.send('Home page!');
-  });
-
 app.use(session(sessionOptions));
 app.use(flash());
 
