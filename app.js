@@ -2,9 +2,7 @@ if(process.env.NODE_ENV != "production"){
     require('dotenv').config();
 }
 const express = require("express");
-const app = express();
 const mongoose = require("mongoose");
-const port = 8080;
 const path = require("path");
 const methodOverride = require("method-override");
 const ejsMate = require("ejs-mate");
@@ -21,27 +19,24 @@ const listingRouter = require("./routes/listing.js");
 const reviewRouter = require("./routes/review.js");
 const userRouter = require("./routes/user.js");
 
+// Initialize application
+const app = express();
+const port = process.env.PORT || 8080;
+
+// Database connection
 const dbUrl = process.env.ATLASDB_URL;
-main()
-.then(()=>{
-    console.log("successfully connect to DB")
-})
-.catch((err)=>{
-    console.log(err);
-});
+mongoose.connect(dbUrl)
+    .then(() => console.log("Successfully connected to DB"))
+    .catch(err => console.error("DB connection error:", err));
 
-async function main(){
-    await mongoose.connect(dbUrl);
-}
-
-app.engine("ejs",ejsMate);
-app.set("view engine","ejs");
-app.set("views",path.join(__dirname,"views"));
+// Set up view engine
+app.engine("ejs", ejsMate);
+app.set("view engine", "ejs");
+app.set("views", path.join(__dirname, "views"));
 app.use(express.static(path.join(__dirname, '/public')));
 app.use(express.json());
-app.use(express.urlencoded({extended:true}));
+app.use(express.urlencoded({ extended: true }));
 app.use(methodOverride("_method"));
-app.locals.cache = false;
 
 const store = MongoStore.create({
     mongoUrl: dbUrl,
@@ -54,7 +49,7 @@ const store = MongoStore.create({
  store.on("error",(err) => {
     console.log("ERROR in MONGO SESSION STORE", err);
  });
-
+// Session configuration
 const sessionOptions = {
     store:store,
     secret: process.env.SECRET,
@@ -66,13 +61,13 @@ const sessionOptions = {
         httpOnly: true,
     }
 };
-
+// Middleware setup
 app.use(session(sessionOptions));
 app.use(flash());
-
 app.use(passport.initialize());
 app.use(passport.session());
  
+// Passport configuration
 passport.use(new LocalStrategy(async (username, password, done) => {
     try {
         const user = await User.findOne({ username });
@@ -88,19 +83,15 @@ passport.use(new LocalStrategy(async (username, password, done) => {
     }
 }));
 
-passport.serializeUser((user,done) => {
-    if(user){
-        return done(null,user.id);
-    }
-    return done(null,false);
+passport.serializeUser ((user, done) => {
+    done(null, user ? user.id : false);
 });
-
 passport.deserializeUser (async (id, done) => {
     try {
         const user = await User.findById(id);
         done(null, user || false);
     } catch (err) {
-        done(null, false);
+        done(err);
     }
 });
 
@@ -121,6 +112,12 @@ app.use((req, res, next) => {
 app.use("/listings",listingRouter);
 app.use("/listings/:id/reviews", reviewRouter);
 app.use("/",userRouter);
+
+app.get("/*",(req,res)=>{
+    res.flash("error","Page is not Found!");
+    res.render("index");
+
+})
 
 app.use((err,req,res,next)=>{
     let{ statusCode=500 , message="Something went wrong!" } = err;
